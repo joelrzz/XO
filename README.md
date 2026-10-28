@@ -23,5 +23,6 @@ FeS1 cluster from DgAOR:
 
 FeS-DgAOR.xyz
 
-Complete Moco-FeS1 system between electrodes
-Moco-FeS-hAOX1.xyz
+Complete Moco-FeS1 system between electrodes for hAOX1-Mo(V):
+
+Moco-FeS-hAOX1-Mo-V.xyz
