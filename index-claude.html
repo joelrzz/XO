@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1VLB – Aldehído oxidorreductasa de Desulfovibrio gigas</title>
+<script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; }
+  #wrap { position: relative; width: 100%; height: 100%; }
+  #viewer { position: absolute; inset: 0; }
+  #panel {
+    position: absolute; top: 10px; left: 10px; z-index: 10; max-width: 320px;
+    background: rgba(255,255,255,.92); border: 1px solid #ccc; border-radius: 8px;
+    padding: 10px 12px; font-size: 13px; line-height: 1.4;
+  }
+  #panel h1 { font-size: 15px; margin: 0 0 4px; }
+  #panel button { margin: 6px 4px 0 0; padding: 4px 8px; cursor: pointer; }
+  #het { margin-top: 6px; max-height: 140px; overflow: auto; font-size: 12px; color: #333; }
+  #status { color: #a00; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="viewer"></div>
+  <div id="panel">
+    <h1>PDB 1VLB</h1>
+    Aldehído oxidorreductasa (<i>Desulfovibrio gigas</i>)<br>
+    <b>Cinta:</b> proteína &nbsp; <b>Bolas y varillas:</b> cofactores / centros redox
+    <div>
+      <button id="btnReset">Vista completa</button>
+      <button id="btnHet">Zoom a cofactores</button>
+      <button id="btnSpin">Rotar</button>
+    </div>
+    <div id="status">Cargando estructura…</div>
+    <div id="het"></div>
+  </div>
+</div>
+
+<script>
+// ============ CONFIGURACIÓN (editá esto) ============
+const PDB_ID = "1VLB";
+
+// Qué átomos se muestran como bolas y varillas.
+// Por defecto: todos los heteroátomos (cofactores, centros Fe/S, iones), sin agua.
+// Ejemplos para acotar:
+//   { resn: ["FES"] }                      -> solo los clusters [2Fe-2S]
+//   { chain: "A", resi: [1, 2, 3] }       -> residuos puntuales
+//   { resn: ["FES"] , byres: true }
+const BALL_STICK_SELECTION = { hetflag: true };
+
+const CARTOON_COLOR = "#9db4cc";
+// =====================================================
+
+const viewer = $3Dmol.createViewer("viewer", { backgroundColor: "white" });
+const statusEl = document.getElementById("status");
+let spinning = false;
+
+function applyStyles() {
+  // 1) Toda la proteína en cinta
+  viewer.setStyle({}, { cartoon: { color: CARTOON_COLOR } });
+  // 2) Región seleccionada en bolas y varillas (colores por elemento: Fe naranja, S amarillo...)
+  viewer.setStyle(BALL_STICK_SELECTION, {
+    stick:  { radius: 0.16, colorscheme: "Jmol" },
+    sphere: { scale: 0.26, colorscheme: "Jmol" }
+  });
+  // 3) Ocultar agua
+  viewer.setStyle({ resn: "HOH" }, {});
+}
+
+function listHetero() {
+  const atoms = viewer.selectedAtoms(BALL_STICK_SELECTION)
+                      .filter(a => a.resn !== "HOH");
+  const groups = new Map();
+  atoms.forEach(a => {
+    const k = `${a.resn} ${a.resi} (cadena ${a.chain})`;
+    groups.set(k, (groups.get(k) || 0) + 1);
+  });
+  document.getElementById("het").innerHTML =
+    "<b>En bolas y varillas:</b><br>" +
+    ([...groups.entries()].map(([k, n]) => `${k} – ${n} átomos`).join("<br>") || "—");
+}
+
+function onLoaded(data) {
+  viewer.addModel(data, "pdb");
+  applyStyles();
+  viewer.zoomTo();
+  viewer.render();
+  listHetero();
+  statusEl.textContent = "";
+}
+
+// Primero intenta un archivo local 1VLB.pdb (más robusto), si no, lo baja del RCSB
+fetch(PDB_ID + ".pdb")
+  .then(r => { if (!r.ok) throw new Error("sin archivo local"); return r.text(); })
+  .catch(() => fetch(`https://files.rcsb.org/download/${PDB_ID}.pdb`).then(r => {
+    if (!r.ok) throw new Error("No se pudo descargar del RCSB");
+    return r.text();
+  }))
+  .then(onLoaded)
+  .catch(e => { statusEl.textContent = "Error: " + e.message; });
+
+document.getElementById("btnReset").onclick = () => { viewer.zoomTo(); viewer.render(); };
+document.getElementById("btnHet").onclick = () => {
+  viewer.zoomTo(BALL_STICK_SELECTION); viewer.render();
+};
+document.getElementById("btnSpin").onclick = () => {
+  spinning = !spinning; viewer.spin(spinning ? "y" : false);
+};
+</script>
+</body>
+</html>
